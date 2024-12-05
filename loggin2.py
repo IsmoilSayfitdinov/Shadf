@@ -8,7 +8,7 @@ import time
 import random
 
 # Telegram API tokeni
-API_TOKEN = 'your_telegram_bot_token'
+API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
 # PostgreSQL ma'lumotlar bazasi bilan ulanish parametrlari
 DB_PARAMS = {
