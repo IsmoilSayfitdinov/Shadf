@@ -1,368 +1,376 @@
-import requests
 import psycopg2
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
-import time
-import random
 import asyncio
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.filters import Command
+from aiogram.filters import StateFilter
+import requests
+import random
+import time
+import pandas as pd
 
-# Telegram API tokeni
+
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
-# PostgreSQL ma'lumotlar bazasi bilan ulanish parametrlari
 DB_PARAMS = {
-    'dbname': 'loginemaktab_db',  # o'zgartiring
-    'user': 'loginemaktab',       # o'zgartiring
-    'password':'Ismoil1233',  # o'zgartiring
-    'host': 'postgresql-loginemaktab.alwaysdata.net',       # server manzili
-    'port': '5432'             # PostgreSQL porti
+    'dbname': 'loginemaktab_db	',  # o'zgartiring
+    'user': 'loginemaktab',   # o'zgartiring
+    'password': 'Ismoil1233',   # o'zgartiring
+    'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
+    'port': '5432'        # PostgreSQL porti
 }
 
-# Boshlang'ich tugma
 keyboardStart = ReplyKeyboardMarkup(
     keyboard=[
-        [
-            KeyboardButton(text="Royhatdan o'tish boshlash"),
-            KeyboardButton(text="Foydalanuvchi qo'shish"),
-        ],
-        [
-            KeyboardButton(text="Foydalanuvchi o'chirish"),
-            KeyboardButton(text="Barcha foydalanuvchilarni ko'rish"),
-        ]
-        [
-            KeyboardButton(text="Chiqish"),
-        ]
+        [KeyboardButton(text="Royhatdan o'tish boshlash ⏩")],
+        [KeyboardButton(text="O'quvchi Qo'shish ➕")],
+        [KeyboardButton(text="Ota Ona Qo'shish ➕")],
+        [KeyboardButton(text="O'quvchi O'chirish ➖")],
+        [KeyboardButton(text="Ota Ona O'chirish ➖")],
+        [KeyboardButton(text="O'quvchi Yangilash 🔄")],
+        [KeyboardButton(text="Ota Ona Yangilash 🔄")],
+        [KeyboardButton(text="Excel orqali Qo'shish 📄")],
+        [KeyboardButton(text="Barcha foydalanuvchilarni ko'rish 👀")]
     ],
     resize_keyboard=True
 )
 
 keyboardStart2 = ReplyKeyboardMarkup(
     keyboard=[
-        [
-            KeyboardButton(text="Royhatdan o'tish Oquvchilar"),
-            KeyboardButton(text="Royhatdan o'tish Ota Onalar"),
-        ],
-        [
-            KeyboardButton(text="Chiqish"),
-        ]
+        [KeyboardButton(text="Royhatdan o'tish o'quvchilar ⏩")],
+        [KeyboardButton(text="Royhatdan o'tish ota-ona ➕")],
+        [KeyboardButton(text="Chiqish 🚪")],
     ],
     resize_keyboard=True
 )
 
 
 
-keyboardStart3 = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text="Oquvchilar"),
-            KeyboardButton(text="Ota Onalar"),
-        ],
-        [
-            KeyboardButton(text="Chiqish"),
-        ],
-    ],
-    resize_keyboard=True
-)
-
-
-# Dispatcher va Bot obyektlari
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# PostgreSQL ma'lumotlar bazasiga ulanish va kerakli jadvalni yaratish
-def create_db():
-    conn = psycopg2.connect(**DB_PARAMS)
+class UserState(StatesGroup):
+    adding_student = State()  # O'quvchi qo'shish
+    adding_parent = State()   # Ota-ona qo'shish
+    deleting_student = State()  # O'quvchi o'chirish
+    deleting_parent = State()   # Ota-ona o'chirish
+    updating_student = State()
+    updating_parent = State()
+    uploading_excel = State()
+
+def get_db_connection():
+    return psycopg2.connect(**DB_PARAMS)
+
+def execute_query(query, params=None):
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(''' 
+    cursor.execute(query, params)
+    conn.commit()
+    conn.close()
+
+def fetch_query(query, params=None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, params)
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+def create_db():
+    create_users_table = '''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             password TEXT NOT NULL
         )
-    ''')
-    
-    cursor.execute('''
+    '''
+    create_users2_table = '''
         CREATE TABLE IF NOT EXISTS users2 (
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             password TEXT NOT NULL
         )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    '''
+    execute_query(create_users_table)
+    execute_query(create_users2_table)
 
-# Ma'lumotlar bazasiga foydalanuvchi qo'shish
-def add_user_to_db(username, password):
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO users (username, password) VALUES (%s, %s)
-    ''', (username, password))
-    conn.commit()
-    conn.close()
-    
-def add_user_to_db2(username, password):
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO users2 (username, password) VALUES (%s, %s)
-    ''', (username, password))
-    conn.commit()
-    conn.close()
+def add_user_to_db(username, password, table='users'):
+    query = f"INSERT INTO {table} (username, password) VALUES (%s, %s)"
+    execute_query(query, (username, password))
+
+def delete_user_from_db(user_id, table='users'):
+    query = f"DELETE FROM {table} WHERE id = %s"
+    execute_query(query, (user_id,))
+
+def get_all_users_from_db(table='users'):
+    query = f"SELECT id, username, password FROM {table}"
+    return fetch_query(query)
 
 
+async def handle_login_student(message: types.Message):
+    # DBdan foydalanuvchilarni olish
+    users = get_all_users_from_db('users')
+    if users:
+        for user in users:
+            print(user)
+            id, username, password = user  # Extracting username and password from the fetched result
+            login_data = {
+                'login': username,
+                'password': password
+            }
+            response = requests.post('https://login.emaktab.uz/', data=login_data)
+
+            if response.status_code == 200:
+                await message.answer(f"{username} foydalanuvchisi ✅ 😃.")
+            else:
+                await message.answer(f"ID: {id} - {username} foydalanuvchisi ❌ ☹️")
+
+            # Tasodifiy kutish (non-blocking sleep)
+            time.sleep(random.uniform(2, 4))
+    else:
+        await message.answer("Foydalanuvchilar mavjud emas.")
+
+async def handle_login_parent(message: types.Message):
+    # DBdan foydalanuvchilarni olish
+    users = get_all_users_from_db('users2')
+    if users:
+        for user in users:
+            print(user)
+            username, password = user  # Extracting username and password from the fetched result
+            login_data = {
+                'login': username,
+                'password': password
+            }
+            response = requests.post('https://login.emaktab.uz/', data=login_data)
+
+            if response.status_code == 200:
+                await message.answer(f"{username} foydalanuvchisi ✅ 😃.")
+            else:
+                await message.answer(f"{username} foydalanuvchisi ❌ ☹️")
+
+            # Tasodifiy kutish (non-blocking sleep)
+            time.sleep(random.uniform(2, 4))
+    else:
+        await message.answer("Foydalanuvchilar mavjud emas.")
+
+@dp.message(F.text == "O'quvchi Yangilash 🔄")
+async def handle_update_student(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, yangilash uchun o'quvchining ID sini, yangi username va yangi parolni kiriting (format: ID username password).")
+    await state.set_state(UserState.updating_student)
 
 
-# Ma'lumotlar bazasidan foydalanuvchini o'chirish
-def delete_user_from_db(user_id):
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('''
-        DELETE FROM users WHERE id = %s
-    ''', (user_id,))
-    conn.commit()
-    conn.close()
-    
-    
-def delete_user_from_db2(user_id):
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('''
-        DELETE FROM users2 WHERE id = %s
-    ''', (user_id,))
-    conn.commit()
-    conn.close()
+@dp.message(StateFilter(UserState.updating_student))
+async def update_student(message: types.Message, state: FSMContext):
+    try:
+        user_id, username, password = message.text.strip().split()
+        execute_query("UPDATE users SET username = %s, password = %s WHERE id = %s", (username, password, user_id))
+        await message.answer(f"O'quvchi ID: {user_id} muvaffaqiyatli yangilandi.")
+    except Exception as e:
+        await message.answer(f"Xatolik: {str(e)}")
+    finally:
+        await state.clear()
 
 
+@dp.message(F.text == "Ota Ona Yangilash 🔄")
+async def handle_update_parent(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, yangilash uchun ota-onaning ID sini, yangi username va yangi parolni kiriting (format: ID username password).")
+    await state.set_state(UserState.updating_parent)
 
+@dp.message(StateFilter(UserState.updating_parent))
+async def update_parent(message: types.Message, state: FSMContext):
+    try:
+        user_id, username, password = message.text.strip().split()
+        execute_query("UPDATE users2 SET username = %s, password = %s WHERE id = %s", (username, password, user_id))
+        await message.answer(f"Ota-ona ID: {user_id} muvaffaqiyatli yangilandi.")
+    except Exception as e:
+        await message.answer(f"Xatolik: {str(e)}")
+    finally:
+        await state.clear()
+        
+@dp.message(F.text == "Excel orqali Qo'shish 📄")
+async def handle_excel_upload(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, Excel faylni yuboring (faqat .xlsx formatdagi fayl qabul qilinadi).")
+    await state.set_state(UserState.uploading_excel)
+@dp.message(StateFilter(UserState.uploading_excel), F.content_type == 'document') 
+async def process_excel_upload(message: types.Message, state: FSMContext):
+    try:
+        file_id = message.document.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        await bot.download_file(file_path, f"./{message.document.file_name}")
 
-# Ma'lumotlar bazasidan barcha foydalanuvchilarni olish
-def start_register():
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('SELECT username, password FROM users')
-    users = cursor.fetchall()
-    conn.close()
-    return users
+        # Excel faylini o'qish
+        df = pd.read_excel(f"./{message.document.file_name}")
 
-def start_register2():
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('SELECT username, password FROM users2')
-    users = cursor.fetchall()
-    conn.close()
-    return users
+        # NaN qiymatlarini olib tashlash
+        df = df.dropna(axis=1, how='all')  # Agar ustunda faqat NaN bo'lsa, ustunni o'chirish
+        df = df.dropna(subset=['Unnamed: 1', 'Unnamed: 2'])  # username va table ustunlarini tekshirish
 
+        # Ustun nomlarini to'g'irlash (faqat 2 ta ustun bor)
+        df.columns = ['username', 'password']  # Faol ustunlar faqat 'username' va 'password' bo'lsin
 
+        # NaN qiymatlarini olib tashlash (agar username yoki password yo'q bo'lsa)
+        df = df.dropna(subset=['username', 'password'])
 
-def get_all_users_from_db():
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, username FROM users')
-    users = cursor.fetchall()
-    conn.close()
-    return users
+        # Ma'lumotlarni o'qib bazaga kiritish
+        for index, row in df.iterrows():
+            username = row['username']  # B ustuni username sifatida
+            password = row['password']  # C ustuni password sifatida
 
-def get_all_users_from_db2():
-    conn = psycopg2.connect(**DB_PARAMS)
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, username FROM users2')
-    users = cursor.fetchall()
-    conn.close()
-    return users
+            # Debug: Exceldan olingan ma'lumotlarni tekshirish
+            print(f"Username: {username}, Password: {password}")
 
-# Start komandasi uchun handler
+            # Foydalanuvchi bazada mavjudligini tekshirish
+            check_query = "SELECT COUNT(*) FROM users WHERE username = %s"
+            
+            # DB ulanishi va cursor yaratish
+            connection = get_db_connection()  # Bu yerda get_db_connection() ulanishni qaytaradi
+            cursor = connection.cursor()  # Cursor yaratish
+            
+            cursor.execute(check_query, (username,))
+            result = cursor.fetchone()
+
+            if result and result[0] > 0:
+                # Agar foydalanuvchi bazada mavjud bo'lsa
+                print(f"{username} bazada mavjud. Yana qo'shilmadi.")
+                await message.answer(f"{username} bazada mavjud. Yana qo'shilmadi.")
+                cursor.close()
+                connection.close()  # Cursor va connectionni yopish
+                continue  # Keyingi foydalanuvchiga o'tish
+
+            # Foydalanuvchi bazaga qo'shish
+            insert_query = "INSERT INTO users (username, password) VALUES (%s, %s)"
+            cursor.execute(insert_query, (username, password))  # Ma'lumotlarni qo'shish
+            connection.commit()  # O'zgarishlarni saqlash
+            
+            print(f"{username} muvaffaqiyatli qo'shildi.")
+            cursor.close()
+            connection.close()  # Cursor va connectionni yopish
+        
+        await message.answer("Foydalanuvchilar muvaffaqiyatli qo'shildi.")
+    except Exception as e:
+        await message.answer(f"Xatolik: {str(e)}")
+    finally:
+        await state.clear()
+            
+@dp.message(F.text == "Chiqish 🚪")
+async def handle_exit(message: types.Message):
+    await message.answer("Boshlash uchun pastdagi tugmalrni birini bosing !!", reply_markup=keyboardStart)
+
 @dp.message(Command("start"))
 async def send_welcome(message: types.Message):
-    await message.answer(
-        "Royhatdan o'tishni boshlash uchun pastdagi tugmani bosing.",
-        reply_markup=keyboardStart
-    )
-    
-@dp.message(lambda message: message.text == "Royhatdan o'tish boshlash")
+    await message.answer("Royhatdan o'tishni boshlash uchun pastdagi tugmani bosing.", reply_markup=keyboardStart)
+
+@dp.message(F.text == "Royhatdan o'tish boshlash ⏩")
 async def send_welcome2(message: types.Message):
-    await message.answer(
-        "Bitasini tanglang !!!.",
-        reply_markup=keyboardStart2
-    )
+    await message.answer("Bitasini tanglang !!!", reply_markup=keyboardStart2)
 
-    @dp.message(lambda message: message.text == "Royhatdan o'tish Oquvchilar")
-    async def handle_login_student(message: types.Message):
-    # DBdan foydalanuvchilarni olish
-        users = start_register()
-        if users:
-             for user in users:
-                username, password = user
-                login_data = {
-                    'login': username,
-                    'password': password
-                }
-                response = requests.post('https://login.emaktab.uz/', data=login_data)
+@dp.message(F.text == "O'quvchi Qo'shish ➕")
+async def handle_add_student(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, o'quvchi username va parolni kiriting (format: username password).")
+    await state.set_state(UserState.adding_student)
 
-                if response.status_code == 200:
-                    await message.answer(f"{username} foydalanuvchisi ✅ 😃.")
-                else:
-                    await message.answer(f"{username} foydalanuvchisi ❌ ☹️")
+@dp.message(StateFilter(UserState.adding_student), lambda message: len(message.text.strip().split()) == 2)
+async def add_student_to_db(message: types.Message, state: FSMContext):
+    username, password = message.text.strip().split()
+    add_user_to_db(username, password)
+    await message.answer(f"{username} o'quvchisi muvaffaqiyatli bazaga qo'shildi.")
+    await state.clear()
 
-                # Tasodifiy kutish
-                time.sleep(random.uniform(1, 3))
-        else:
-            await message.answer("Foydalanuvchilar mavjud emas.")
-    
-    @dp.message(lambda message: message.text == "Royhatdan o'tish Ota Onalar")
-    async def handle_login_student(message: types.Message):
-    # DBdan foydalanuvchilarni olish
-        users = start_register2()
-        if users:
-            for user in users:
-                username, password = user
-                login_data = {
-                    'login': username,
-                    'password': password
-                }
-                response = requests.post('https://login.emaktab.uz/', data=login_data)
+@dp.message(F.text == "Ota Ona Qo'shish ➕")
+async def handle_add_parent(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, ota-ona username va parolni kiriting (format: username password).")
+    await state.set_state(UserState.adding_parent)
 
-                if response.status_code == 200:
-                    await message.answer(f"{username} foydalanuvchisi ✅ 😃.")
-                else:
-                    await message.answer(f"{username} foydalanuvchisi ❌ ☹️")
+@dp.message(StateFilter(UserState.adding_parent), lambda message: len(message.text.strip().split()) == 2)
+async def add_parent_to_db(message: types.Message, state: FSMContext):
+    username, password = message.text.strip().split()
+    add_user_to_db(username, password, table='users2')
+    await message.answer(f"{username} ota-onasi muvaffaqiyatli bazaga qo'shildi.")
+    await state.clear()
 
-                # Tasodifiy kutish
-                time.sleep(random.uniform(1, 3))
-        else:
-            await message.answer("Foydalanuvchilar mavjud emas.")
+@dp.message(F.text == "O'quvchi O'chirish ➖")
+async def handle_delete_student(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, o'chirishni istagan o'quvchining ID sini kiriting.")
+    await state.set_state(UserState.deleting_student)
 
+@dp.message(StateFilter(UserState.deleting_student), lambda message: message.text.isdigit())
+async def delete_student_from_db(message: types.Message, state: FSMContext):
+    user_id = int(message.text)
+    users = get_all_users_from_db()
+    if any(user[0] == user_id for user in users):
+        delete_user_from_db(user_id)
+        await message.answer(f"ID: {user_id} bo'lgan o'quvchi o'chirildi.")
+    else:
+        await message.answer(f"ID: {user_id} bo'lgan o'quvchi mavjud emas.")
+    await state.clear()
 
+@dp.message(F.text == "Ota Ona O'chirish ➖")
+async def handle_delete_parent(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, o'chirishni istagan ota-onaning ID sini kiriting.")
+    await state.set_state(UserState.deleting_parent)
 
+@dp.message(StateFilter(UserState.deleting_parent), lambda message: message.text.isdigit())
+async def delete_parent_from_db(message: types.Message, state: FSMContext):
+    user_id = int(message.text)
+    users = get_all_users_from_db(table='users2')
+    if any(user[0] == user_id for user in users):
+        delete_user_from_db(user_id, table='users2')
+        await message.answer(f"ID: {user_id} bo'lgan ota-ona o'chirildi.")
+    else:
+        await message.answer(f"ID: {user_id} bo'lgan ota-ona mavjud emas.")
+    await state.clear()
 
-
-# Foydalanuvchi qo'shish
-@dp.message(lambda message: message.text == "Foydalanuvchi qo'shish")
-async def start2(message: types.Message):
-    await message.answer("Iltimos foydalanuvchini tanglang. ", reply_markup=keyboardStart3)
-    
-    @dp.message(lambda message: message.text == "Oquvchilar")
-    async def handle_add_user(message: types.Message):
-        await message.answer("Iltimos, username va parolni kiriting (format: username password).")
-        # Foydalanuvchidan username va password so'raymiz
-        @dp.message()
-        async def add_user(message: types.Message):
-            user_input = message.text.split()
-            if len(user_input) != 2:
-                await message.answer("Iltimos, to'g'ri formatda kiriting: username password.")
-                return
-            
-            username, password = user_input
-            add_user_to_db(username, password)
-            await message.answer(f"{username} foydalanuvchisi bazaga qo'shildi.")
-
-    @dp.message(lambda message: message.text == "Ota Onalar")
-    async def handle_add_user(message: types.Message):
-        await message.answer("Iltimos, username va parolni kiriting (format: username password).")
-        # Foydalanuvchidan username va password so'raymiz
-        @dp.message()
-        async def add_user(message: types.Message):
-            user_input = message.text.split()
-            if len(user_input) != 2:
-                await message.answer("Iltimos, to'g'ri formatda kiriting: username password.")
-                return
-            
-            username, password = user_input
-            add_user_to_db2(username, password)
-            await message.answer(f"{username} foydalanuvchisi bazaga qo'shildi.")
-
-    
+async def send_long_message(message: types.Message, text: str):
+    max_length = 4096  # Maksimal uzunlik
+    for i in range(0, len(text), max_length):
+        await message.answer(text[i:i+max_length])
 
 
-# Foydalanuvchi o'chirish
-@dp.message(lambda message: message.text == "Foydalanuvchi o'chirish")
-async def start3(message: types.Message):
-    await message.answer("Iltimos, qo'shishni istagan foydalanuvchini tanglang. ", reply_markup=keyboardStart3)
-    
-    
-    @dp.message(lambda message: message.text == "Oquvchilar")
-    async def handle_delete_user(message: types.Message):
-        await message.answer("Iltimos, o'chirishni istagan foydalanuvchining ID sini kiriting.")
-        
-        # Foydalanuvchidan id so'raymiz
-        @dp.message()
-        async def delete_user(message: types.Message):
-            try:
-                user_id = int(message.text)
-                users = get_all_users_from_db()
-                user_exists = False
-                
-                # Foydalanuvchini tekshiramiz
-                for user in users:
-                    if user[0] == user_id:
-                        delete_user_from_db(user_id)
-                        await message.answer(f"Ismi: {user[1]} bo'lgan foydalanuvchi o'chirildi.")
-                        user_exists = True
-                        break
-
-                if not user_exists:
-                    await message.answer(f"Ismi: {user_id} bo'lgan foydalanuvchi mavjud emas.")
-
-            except ValueError:
-                await message.answer("Iltimos, faqat raqamlarni kiriting.")
-
-    @dp.message(lambda message: message.text == "Ota Onalar")
-    async def handle_delete_user(message: types.Message):
-        await message.answer("Iltimos, o'chirishni istagan foydalanuvchining ID sini kiriting.")
-        
-        # Foydalanuvchidan id so'raymiz
-        @dp.message()
-        async def delete_user(message: types.Message):
-            try:
-                user_id = int(message.text)
-                users = get_all_users_from_db()
-                user_exists = False
-                
-                # Foydalanuvchini tekshiramiz
-                for user in users:
-                    if user[0] == user_id:
-                        delete_user_from_db2(user_id)
-                        await message.answer(f"Ismi: {user[1]} bo'lgan foydalanuvchi o'chirildi.")
-                        user_exists = True
-                        break
-
-                if not user_exists:
-                    await message.answer(f"Ismi: {user_id} bo'lgan foydalanuvchi mavjud emas.")
-
-            except ValueError:
-                await message.answer("Iltimos, faqat raqamlarni kiriting.")
-
-
-    
-# Barcha foydalanuvchilarni ko'rsatish
-@dp.message(lambda message: message.text == "Barcha foydalanuvchilarni ko'rish")
+@dp.message(F.text == "Barcha foydalanuvchilarni ko'rish 👀")
 async def handle_show_all_users(message: types.Message):
     users = get_all_users_from_db()
-    users2 = get_all_users_from_db2()
+    users2 = get_all_users_from_db(table='users2')
+    
+    user_list = ""
+    parent_list = ""
+    
     if users:
         user_list = "\n".join([f"ID: {user[0]} - Username: {user[1]}" for user in users])
-        await message.answer(f"Barcha Oquvchilar:\n\n{user_list}")
     else:
-        await message.answer("Hozirda Oquvchilar mavjud emas.")
+        user_list = "O'quvchilar mavjud emas."
 
     if users2:
-        user_list2 = "\n".join([f"ID: {user[0]} - Username: {user[1]}" for user in users2])
-        await message.answer(f"Barcha Ota Onalar:\n\n{user_list2}")
+        parent_list = "\n".join([f"ID: {user[0]} - Username: {user[1]}" for user in users2])
     else:
-        await message.answer("Hozirda Ota Onalar mavjud emas.")
+        parent_list = "Ota-onalar mavjud emas."
+
+    # Foydalanuvchilar ro'yxatini bo'lib yuborish
+    if user_list:
+        await send_long_message(message, f"Barcha Oquvchilar:\n\n{user_list}")
+
+    if parent_list:
+        await send_long_message(message, f"Barcha Ota-onalar:\n\n{parent_list}")
 
 
-@dp.message(lambda message: message.text == "Chiqish")
-async def handle_exit(message: types.Message):
-    await message.answer("Botdan chiqib ketildi.", reply_markup=keyboardStart)
 
 
-# Asinxron ishga tushirish
+
+
+@dp.message(F.text == "Royhatdan o'tish o'quvchilar ⏩")
+async def start_register_students(message: types.Message):
+    await handle_login_student(message)
+
+@dp.message(F.text == "Royhatdan o'tish ota-ona ➕")
+async def start_register_parents(message: types.Message):
+    await handle_login_parent(message)
+
+
+
 async def main():
     create_db()  # Ma'lumotlar bazasini yaratish
-    bot = Bot(token=API_TOKEN)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
