@@ -33,7 +33,10 @@ keyboardStart = ReplyKeyboardMarkup(
         [KeyboardButton(text="Ota Ona Yangilash 🔄")],
         [KeyboardButton(text="Excel orqali O'quvchilar Qo'shish 📄")],
         [KeyboardButton(text="Excel orqali Ota-onalar Qo'shish 📄")],
-        [KeyboardButton(text="Barcha foydalanuvchilarni ko'rish 👀")]
+        [KeyboardButton(text="Barcha foydalanuvchilarni ko'rish 👀")],
+        [KeyboardButton(text="Barcha O'quvchilarni O'chirish 🗑")],  # Yangi tugma
+        [KeyboardButton(text="Barcha Ota-Onalarni O'chirish 🗑")],
+        [KeyboardButton(text="Foydalanuvchini qidirish 🔍")]
     ],
     resize_keyboard=True
 )
@@ -60,6 +63,7 @@ class UserState(StatesGroup):
     updating_student = State()
     updating_parent = State()
     uploading_excel = State()
+    searching_user = State()
 
 def get_db_connection():
     return psycopg2.connect(**DB_PARAMS)
@@ -272,6 +276,52 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
         await message.answer(f"Xatolik: {str(e)}")
     finally:
         await state.clear()
+
+
+
+@dp.message(F.text == "Barcha O'quvchilarni O'chirish 🗑")
+async def delete_all_students(message: types.Message):
+    try:
+        # 'users' jadvalidan barcha ma'lumotlarni o'chirish
+        query = "DELETE FROM users"  # Jadvalni nomini to'g'ri kiriting
+        execute_query(query)  # Bu yerda query bajariladi
+        await message.answer("Barcha o'quvchilar muvaffaqiyatli o'chirildi.")
+    except Exception as e:
+        await message.answer(f"Xatolik: {str(e)}")
+
+@dp.message(F.text == "Barcha Ota-Onalarni O'chirish 🗑")
+async def delete_all_parents(message: types.Message):
+    try:
+        # 'users2' jadvalidan barcha ma'lumotlarni o'chirish
+        query = "DELETE FROM users2"  # Jadvalni nomini to'g'ri kiriting
+        execute_query(query)  # Bu yerda query bajariladi
+        await message.answer("Barcha ota-onalar muvaffaqiyatli o'chirildi.")
+    except Exception as e:
+        await message.answer(f"Xatolik: {str(e)}")
+
+
+@dp.message(F.text == "Foydalanuvchini qidirish 🔍")
+async def start_searching_user(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, qidiruv uchun username kiriting.")
+    await state.set_state(UserState.searching_user)
+
+@dp.message(StateFilter(UserState.searching_user))
+async def search_user(message: types.Message, state: FSMContext):
+    username = message.text.strip()
+    
+    # Qidirish uchun DBdan ma'lumot olish
+    query = "SELECT id, username FROM users WHERE username = %s"
+    result = fetch_query(query, (username,))
+    
+    if result:
+        # Foydalanuvchi topildi
+        user_info = "\n".join([f"ID: {user[0]}, Username: {user[1]}" for user in result])
+        await message.answer(f"Topilgan foydalanuvchilar:\n{user_info}")
+    else:
+        await message.answer("Foydalanuvchi topilmadi.")
+    
+    await state.clear()  # State ni tozalash
+
 
             
 @dp.message(F.text == "Chiqish 🚪")
