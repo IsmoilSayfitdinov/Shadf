@@ -14,7 +14,7 @@ import time
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
 DB_PARAMS = {
-    'dbname': 'loginemaktab_db	',  # o'zgartiring
+    'dbname': 'loginemaktab_db',  # o'zgartiring
     'user': 'loginemaktab',   # o'zgartiring
     'password': 'Ismoil1233',   # o'zgartiring
     'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
