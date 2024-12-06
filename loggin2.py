@@ -14,10 +14,10 @@ import pandas as pd
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
 DB_PARAMS = {
-    'dbname': 'loginemaktab_db',  # o'zgartiring
-    'user': 'loginemaktab',   # o'zgartiring
-    'password': 'Ismoil1233',   # o'zgartiring
-    'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
+    'dbname': 'maktab',  # o'zgartiring
+    'user': 'postgres',   # o'zgartiring
+    'password': '9312',   # o'zgartiring
+    'host': 'localhost',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
@@ -190,12 +190,26 @@ async def update_parent(message: types.Message, state: FSMContext):
         await state.clear()
         
 @dp.message(F.text == "Excel orqali O'quvchilar Qo'shish 📄")
+@dp.message(F.text == "Excel orqali Ota-onalar Qo'shish 📄")
 async def handle_excel_upload(message: types.Message, state: FSMContext):
-    await message.answer("Iltimos, Excel faylni yuboring (faqat .xlsx formatdagi fayl qabul qilinadi).")
-    await state.set_state(UserState.uploading_excel)
-@dp.message(StateFilter(UserState.uploading_excel), F.content_type == 'document') 
+    if "O'quvchilar" in message.text:
+        role = "users"
+        why = "O'quvchilar"
+    else:
+        role = "users2"
+        why = "Ota-onalar" 
+
+    await message.answer(f"{role.capitalize()} \n Iltimos, Excel faylni yuboring (faqat .xlsx formatdagi fayl qabul qilinadi).")
+    await state.set_state(UserState.uploading_excel)  # Holatni o'rnatish
+    await state.update_data(role=role, why=why)  # role ni saqlash
+
+@dp.message(StateFilter(UserState.uploading_excel), F.content_type == 'document')
 async def process_excel_upload(message: types.Message, state: FSMContext):
     try:
+        data = await state.get_data()
+        role = data.get("role", "users")  # role ni olish
+        why = data.get("why", "O'quvchilar")
+        
         file_id = message.document.file_id
         file = await bot.get_file(file_id)
         file_path = file.file_path
@@ -216,14 +230,14 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
 
         # Ma'lumotlarni o'qib bazaga kiritish
         for index, row in df.iterrows():
-            username = row['username']  # B ustuni username sifatida
-            password = row['password']  # C ustuni password sifatida
+            username = row['username']
+            password = row['password']
 
             # Debug: Exceldan olingan ma'lumotlarni tekshirish
             print(f"Username: {username}, Password: {password}")
 
             # Foydalanuvchi bazada mavjudligini tekshirish
-            check_query = "SELECT COUNT(*) FROM users WHERE username = %s"
+            check_query = f"SELECT COUNT(*) FROM {role} WHERE username = %s"
             
             # DB ulanishi va cursor yaratish
             connection = get_db_connection()  # Bu yerda get_db_connection() ulanishni qaytaradi
@@ -241,7 +255,7 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
                 continue  # Keyingi foydalanuvchiga o'tish
 
             # Foydalanuvchi bazaga qo'shish
-            insert_query = "INSERT INTO users (username, password) VALUES (%s, %s)"
+            insert_query = f"INSERT INTO {role} (username, password) VALUES (%s, %s)"
             cursor.execute(insert_query, (username, password))  # Ma'lumotlarni qo'shish
             connection.commit()  # O'zgarishlarni saqlash
             
@@ -249,81 +263,12 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
             cursor.close()
             connection.close()  # Cursor va connectionni yopish
         
-        await message.answer("Foydalanuvchilar muvaffaqiyatli qo'shildi.")
+        await message.answer(f"{why.capitalize()} muvaffaqiyatli qo'shildi.")
     except Exception as e:
         await message.answer(f"Xatolik: {str(e)}")
     finally:
         await state.clear()
 
-
-@dp.message(F.text == "Excel orqali Ota-onalar Qo'shish 📄")
-async def handle_excel_upload(message: types.Message, state: FSMContext):
-    await message.answer("Iltimos, Excel faylni yuboring (faqat .xlsx formatdagi fayl qabul qilinadi).")
-    await state.set_state(UserState.uploading_excel)
-@dp.message(StateFilter(UserState.uploading_excel), F.content_type == 'document') 
-async def process_excel_upload(message: types.Message, state: FSMContext):
-    try:
-        file_id = message.document.file_id
-        file = await bot.get_file(file_id)
-        file_path = file.file_path
-        await bot.download_file(file_path, f"./{message.document.file_name}")
-
-        # Excel faylini o'qish
-        df = pd.read_excel(f"./{message.document.file_name}")
-
-        # NaN qiymatlarini olib tashlash
-        df = df.dropna(axis=1, how='all')  # Agar ustunda faqat NaN bo'lsa, ustunni o'chirish
-        df = df.dropna(subset=['Unnamed: 1', 'Unnamed: 2'])  # username va table ustunlarini tekshirish
-
-        # Ustun nomlarini to'g'irlash (faqat 2 ta ustun bor)
-        df.columns = ['username', 'password']  # Faol ustunlar faqat 'username' va 'password' bo'lsin
-
-        # NaN qiymatlarini olib tashlash (agar username yoki password yo'q bo'lsa)
-        df = df.dropna(subset=['username', 'password'])
-
-        # Ma'lumotlarni o'qib bazaga kiritish
-        for index, row in df.iterrows():
-            username = row['username']  # B ustuni username sifatida
-            password = row['password']  # C ustuni password sifatida
-
-            # Debug: Exceldan olingan ma'lumotlarni tekshirish
-            print(f"Username: {username}, Password: {password}")
-
-            # Foydalanuvchi bazada mavjudligini tekshirish
-            check_query = "SELECT COUNT(*) FROM users WHERE username = %s"
-            
-            # DB ulanishi va cursor yaratish
-            connection = get_db_connection()  # Bu yerda get_db_connection() ulanishni qaytaradi
-            cursor = connection.cursor()  # Cursor yaratish
-            
-            cursor.execute(check_query, (username,))
-            result = cursor.fetchone()
-
-            if result and result[0] > 0:
-                # Agar foydalanuvchi bazada mavjud bo'lsa
-                print(f"{username} bazada mavjud. Yana qo'shilmadi.")
-                await message.answer(f"{username} bazada mavjud. Yana qo'shilmadi.")
-                cursor.close()
-                connection.close()  # Cursor va connectionni yopish
-                continue  # Keyingi foydalanuvchiga o'tish
-
-            # Foydalanuvchi bazaga qo'shish
-            insert_query = "INSERT INTO users (username, password) VALUES (%s, %s)"
-            cursor.execute(insert_query, (username, password))  # Ma'lumotlarni qo'shish
-            connection.commit()  # O'zgarishlarni saqlash
-            
-            print(f"{username} muvaffaqiyatli qo'shildi.")
-            cursor.close()
-            connection.close()  # Cursor va connectionni yopish
-        
-        await message.answer("Foydalanuvchilar muvaffaqiyatli qo'shildi.")
-    except Exception as e:
-        await message.answer(f"Xatolik: {str(e)}")
-    finally:
-        await state.clear()     
-        
-        
-            
             
 @dp.message(F.text == "Chiqish 🚪")
 async def handle_exit(message: types.Message):
