@@ -215,7 +215,7 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
         file = await bot.get_file(file_id)
         file_path = file.file_path
         file_name = f"/home/loginemaktab/Shadf/{message.document.file_name}" 
-        await bot.download_file(file_path, f"./{message.document.file_name}")
+        await bot.download_file(file_path, f"/home/loginemaktab/Shadf/{message.document.file_name}")
 
         # Excel faylini o'qish
         df = pd.read_excel(f"./{message.document.file_name}")
