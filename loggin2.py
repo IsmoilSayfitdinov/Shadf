@@ -9,7 +9,7 @@ from aiogram.filters import StateFilter
 import requests
 import random
 import time
-
+import pandas as pd
 
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
