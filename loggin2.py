@@ -10,6 +10,7 @@ import requests
 import random
 import time
 import pandas as pd
+import os
 
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
@@ -213,6 +214,7 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
         file_id = message.document.file_id
         file = await bot.get_file(file_id)
         file_path = file.file_path
+        file_name = f"./{message.document.file_name}" 
         await bot.download_file(file_path, f"./{message.document.file_name}")
 
         # Excel faylini o'qish
@@ -264,6 +266,8 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
             connection.close()  # Cursor va connectionni yopish
         
         await message.answer(f"{why.capitalize()} muvaffaqiyatli qo'shildi.")
+        
+        os.remove(file_name) 
     except Exception as e:
         await message.answer(f"Xatolik: {str(e)}")
     finally:
