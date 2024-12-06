@@ -9,7 +9,6 @@ from aiogram.filters import StateFilter
 import requests
 import random
 import time
-import pandas as pd
 
 
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
@@ -189,7 +188,7 @@ async def update_parent(message: types.Message, state: FSMContext):
     finally:
         await state.clear()
         
-@dp.message(F.text == "Excel orqali Qo'shish 📄")
+"""@dp.message(F.text == "Excel orqali Qo'shish 📄")
 async def handle_excel_upload(message: types.Message, state: FSMContext):
     await message.answer("Iltimos, Excel faylni yuboring (faqat .xlsx formatdagi fayl qabul qilinadi).")
     await state.set_state(UserState.uploading_excel)
@@ -253,7 +252,7 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
     except Exception as e:
         await message.answer(f"Xatolik: {str(e)}")
     finally:
-        await state.clear()
+        await state.clear()"""
             
 @dp.message(F.text == "Chiqish 🚪")
 async def handle_exit(message: types.Message):
@@ -353,8 +352,6 @@ async def handle_show_all_users(message: types.Message):
 
     if parent_list:
         await send_long_message(message, f"Barcha Ota-onalar:\n\n{parent_list}")
-
-
 
 
 
