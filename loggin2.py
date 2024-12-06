@@ -15,10 +15,10 @@ import pandas as pd
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
 DB_PARAMS = {
-    'dbname': 'loginemaktab_db	',  # o'zgartiring
-    'user': 'loginemaktab',   # o'zgartiring
+    'dbname': 'ismoil320_maktab	',  # o'zgartiring
+    'user': 'ismoil320',   # o'zgartiring
     'password': 'Ismoil1233',   # o'zgartiring
-    'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
+    'host': 'postgresql-ismoil320.alwaysdata.net',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
