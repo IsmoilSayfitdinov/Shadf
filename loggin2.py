@@ -30,7 +30,8 @@ keyboardStart = ReplyKeyboardMarkup(
         [KeyboardButton(text="Ota Ona O'chirish ➖")],
         [KeyboardButton(text="O'quvchi Yangilash 🔄")],
         [KeyboardButton(text="Ota Ona Yangilash 🔄")],
-        [KeyboardButton(text="Excel orqali Qo'shish 📄")],
+        [KeyboardButton(text="Excel orqali O'quvchilar Qo'shish 📄")],
+        [KeyboardButton(text="Excel orqali Ota-onalar Qo'shish 📄")],
         [KeyboardButton(text="Barcha foydalanuvchilarni ko'rish 👀")]
     ],
     resize_keyboard=True
@@ -188,7 +189,7 @@ async def update_parent(message: types.Message, state: FSMContext):
     finally:
         await state.clear()
         
-"""@dp.message(F.text == "Excel orqali Qo'shish 📄")
+@dp.message(F.text == "Excel orqali O'quvchilar Qo'shish 📄")
 async def handle_excel_upload(message: types.Message, state: FSMContext):
     await message.answer("Iltimos, Excel faylni yuboring (faqat .xlsx formatdagi fayl qabul qilinadi).")
     await state.set_state(UserState.uploading_excel)
@@ -252,7 +253,77 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
     except Exception as e:
         await message.answer(f"Xatolik: {str(e)}")
     finally:
-        await state.clear()"""
+        await state.clear()
+
+
+@dp.message(F.text == "Excel orqali Ota-onalar Qo'shish 📄")
+async def handle_excel_upload(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos, Excel faylni yuboring (faqat .xlsx formatdagi fayl qabul qilinadi).")
+    await state.set_state(UserState.uploading_excel)
+@dp.message(StateFilter(UserState.uploading_excel), F.content_type == 'document') 
+async def process_excel_upload(message: types.Message, state: FSMContext):
+    try:
+        file_id = message.document.file_id
+        file = await bot.get_file(file_id)
+        file_path = file.file_path
+        await bot.download_file(file_path, f"./{message.document.file_name}")
+
+        # Excel faylini o'qish
+        df = pd.read_excel(f"./{message.document.file_name}")
+
+        # NaN qiymatlarini olib tashlash
+        df = df.dropna(axis=1, how='all')  # Agar ustunda faqat NaN bo'lsa, ustunni o'chirish
+        df = df.dropna(subset=['Unnamed: 1', 'Unnamed: 2'])  # username va table ustunlarini tekshirish
+
+        # Ustun nomlarini to'g'irlash (faqat 2 ta ustun bor)
+        df.columns = ['username', 'password']  # Faol ustunlar faqat 'username' va 'password' bo'lsin
+
+        # NaN qiymatlarini olib tashlash (agar username yoki password yo'q bo'lsa)
+        df = df.dropna(subset=['username', 'password'])
+
+        # Ma'lumotlarni o'qib bazaga kiritish
+        for index, row in df.iterrows():
+            username = row['username']  # B ustuni username sifatida
+            password = row['password']  # C ustuni password sifatida
+
+            # Debug: Exceldan olingan ma'lumotlarni tekshirish
+            print(f"Username: {username}, Password: {password}")
+
+            # Foydalanuvchi bazada mavjudligini tekshirish
+            check_query = "SELECT COUNT(*) FROM users WHERE username = %s"
+            
+            # DB ulanishi va cursor yaratish
+            connection = get_db_connection()  # Bu yerda get_db_connection() ulanishni qaytaradi
+            cursor = connection.cursor()  # Cursor yaratish
+            
+            cursor.execute(check_query, (username,))
+            result = cursor.fetchone()
+
+            if result and result[0] > 0:
+                # Agar foydalanuvchi bazada mavjud bo'lsa
+                print(f"{username} bazada mavjud. Yana qo'shilmadi.")
+                await message.answer(f"{username} bazada mavjud. Yana qo'shilmadi.")
+                cursor.close()
+                connection.close()  # Cursor va connectionni yopish
+                continue  # Keyingi foydalanuvchiga o'tish
+
+            # Foydalanuvchi bazaga qo'shish
+            insert_query = "INSERT INTO users (username, password) VALUES (%s, %s)"
+            cursor.execute(insert_query, (username, password))  # Ma'lumotlarni qo'shish
+            connection.commit()  # O'zgarishlarni saqlash
+            
+            print(f"{username} muvaffaqiyatli qo'shildi.")
+            cursor.close()
+            connection.close()  # Cursor va connectionni yopish
+        
+        await message.answer("Foydalanuvchilar muvaffaqiyatli qo'shildi.")
+    except Exception as e:
+        await message.answer(f"Xatolik: {str(e)}")
+    finally:
+        await state.clear()     
+        
+        
+            
             
 @dp.message(F.text == "Chiqish 🚪")
 async def handle_exit(message: types.Message):
