@@ -1,24 +1,23 @@
-import psycopg2
-from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
-import asyncio
-from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.filters import Command
-from aiogram.filters import StateFilter
-import requests
-import random
-import time
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.fsm.context import FSMContext
 import pandas as pd
+import psycopg2
+import requests
+import asyncio
+import random
 import os
+
 
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
 DB_PARAMS = {
-    'dbname': 'loginemaktab_db',  # o'zgartiring
-    'user': 'loginemaktab',   # o'zgartiring
-    'password': 'Ismoil1233',   # o'zgartiring
-    'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
+    'dbname': 'maktab',  # o'zgartiring
+    'user': 'postgres',   # o'zgartiring
+    'password': '9312',   # o'zgartiring
+    'host': 'localhost',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
@@ -114,51 +113,71 @@ def get_all_users_from_db(table='users'):
     return fetch_query(query)
 
 
+
+login_counter = 0
+MAX_LOGIN_COUNT = 120
+WAIT_TIME_SECONDS = 100
+
+login_counter_parent = 0
+MAX_LOGIN_COUNT_PARENT = 120
+WAIT_TIME_SECONDS_PARENT = 100
+
+
+
+
+
+@dp.message(F.text == "Royhatdan o'tish o'quvchilar ⏩")  # Foydalanuvchi "student_login" deb yozganida
 async def handle_login_student(message: types.Message):
-    # DBdan foydalanuvchilarni olish
+    global login_counter
     users = get_all_users_from_db('users')
     if users:
         for user in users:
-            print(user)
-            id, username, password = user  # Extracting username and password from the fetched result
-            login_data = {
-                'login': username,
-                'password': password
-            }
+            id, username, password = user
+            login_data = {'login': username, 'password': password}
             response = requests.post('https://login.emaktab.uz/', data=login_data)
-
             if response.status_code == 200:
-                await message.answer(f"{username} foydalanuvchisi ✅ 😃.")
+                await message.answer(f"ID: {id} - {username} foydalanuvchisi ✅ 😃.")
             else:
                 await message.answer(f"ID: {id} - {username} foydalanuvchisi ❌ ☹️")
-
-            # Tasodifiy kutish (non-blocking sleep)
-            time.sleep(random.uniform(2, 4))
+            
+            login_counter += 1
+            
+            if login_counter >= MAX_LOGIN_COUNT:
+                await message.answer("120 ta foydalanuvchi login qilindi. Bot 100 soniya dam oladi va yana ishga tushadi 😊.")
+                await asyncio.sleep(WAIT_TIME_SECONDS)
+                login_counter = 0
+            await asyncio.sleep(random.uniform(1, 2))  # Tasodifiy kutish
     else:
-        await message.answer("Foydalanuvchilar mavjud emas.")
+        await message.answer("Talabalar mavjud emas.")
 
+# Ota-onalar uchun login funksiyasi
+@dp.message(F.text == "Royhatdan o'tish ota-ona ➕")  # Foydalanuvchi "parent_login" deb yozganida
 async def handle_login_parent(message: types.Message):
-    # DBdan foydalanuvchilarni olish
+    global login_counter_parent
     users = get_all_users_from_db('users2')
     if users:
         for user in users:
-            print(user)
-            username, password = user  # Extracting username and password from the fetched result
-            login_data = {
-                'login': username,
-                'password': password
-            }
+            id, username, password = user
+            login_data = {'login': username, 'password': password}
             response = requests.post('https://login.emaktab.uz/', data=login_data)
-
+            
             if response.status_code == 200:
-                await message.answer(f"{username} foydalanuvchisi ✅ 😃.")
+                await message.answer(f"ID : {id} - {username} foydalanuvchisi ✅ 😃.")
             else:
-                await message.answer(f"{username} foydalanuvchisi ❌ ☹️")
-
-            # Tasodifiy kutish (non-blocking sleep)
-            time.sleep(random.uniform(2, 4))
+                await message.answer(f"ID: {id} - {username} foydalanuvchisi ❌ ☹️")
+            
+            login_counter_parent += 1
+            
+            if login_counter_parent >= MAX_LOGIN_COUNT_PARENT:
+                await message.answer("120 ta foydalanuvchi login qilindi. Bot 100 soniya dam oladi va yana ishga tushadi 😊.")
+                await asyncio.sleep(WAIT_TIME_SECONDS_PARENT)
+                login_counter_parent = 0
+            
+            await asyncio.sleep(random.uniform(2, 4))  # Tasodifiy kutish
     else:
-        await message.answer("Foydalanuvchilar mavjud emas.")
+        await message.answer("Ota-onalar mavjud emas.")
+    
+    
 
 @dp.message(F.text == "O'quvchi Yangilash 🔄")
 async def handle_update_student(message: types.Message, state: FSMContext):
@@ -218,8 +237,8 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
         file_id = message.document.file_id
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        file_name = f"/home/loginemaktab/Shadf/{message.document.file_name}" 
-        await bot.download_file(file_path, f"/home/loginemaktab/Shadf/{message.document.file_name}")
+        file_name = f"./{message.document.file_name}" 
+        await bot.download_file(file_path, f"./{message.document.file_name}")
 
         # Excel faylini o'qish
         df = pd.read_excel(f"./{message.document.file_name}")
