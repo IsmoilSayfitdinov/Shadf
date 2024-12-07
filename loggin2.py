@@ -14,10 +14,10 @@ import os
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
 DB_PARAMS = {
-    'dbname': 'maktab',  # o'zgartiring
-    'user': 'postgres',   # o'zgartiring
-    'password': '9312',   # o'zgartiring
-    'host': 'localhost',  # server manzili
+    'dbname': 'loginemaktab_db',  # o'zgartiring
+    'user': 'loginemaktab',   # o'zgartiring
+    'password': 'Ismoil1233',   # o'zgartiring
+    'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
@@ -237,11 +237,11 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
         file_id = message.document.file_id
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        file_name = f"./{message.document.file_name}" 
-        await bot.download_file(file_path, f"./{message.document.file_name}")
+        file_name = f"/home/loginemaktab/Shadf/{message.document.file_name}" 
+        await bot.download_file(file_path, f"/home/loginemaktab/Shadf/{message.document.file_name}")
 
         # Excel faylini o'qish
-        df = pd.read_excel(f"./{message.document.file_name}")
+        df = pd.read_excel(f"/home/loginemaktab/Shadf/{message.document.file_name}")
 
         # NaN qiymatlarini olib tashlash
         df = df.dropna(axis=1, how='all')  # Agar ustunda faqat NaN bo'lsa, ustunni o'chirish
