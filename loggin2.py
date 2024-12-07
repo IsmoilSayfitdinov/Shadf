@@ -44,6 +44,7 @@ keyboardStart2 = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Royhatdan o'tish o'quvchilar ⏩")],
         [KeyboardButton(text="Royhatdan o'tish ota-ona ➕")],
+        [KeyboardButton(text="Start 🚀"), KeyboardButton(text="Stop 🚫")],
         [KeyboardButton(text="Chiqish 🚪")],
     ],
     resize_keyboard=True
@@ -123,15 +124,33 @@ MAX_LOGIN_COUNT_PARENT = 120
 WAIT_TIME_SECONDS_PARENT = 100
 
 
+stop_flag = False
 
+@dp.message(F.text == "Start 🚀")
+async def startLogin(message: types.Message):
+    global stop_flag
+    stop_flag = False
+    await message.answer("Login jarayoni boshlandi.", reply_markup=keyboardStart2)
+    
+@dp.message(F.text == "Stop 🚫")
+async def stopLogin(message: types.Message):
+    global stop_flag
+    stop_flag = True
+    await message.answer("Login jarayoni to'xtatildi.", reply_markup=keyboardStart2)
 
 
 @dp.message(F.text == "Royhatdan o'tish o'quvchilar ⏩")  # Foydalanuvchi "student_login" deb yozganida
 async def handle_login_student(message: types.Message):
     global login_counter
+    global stop_flag
     users = get_all_users_from_db('users')
     if users:
         for user in users:
+            if stop_flag:
+                await message.answer("Login jarayoni to'xtatildi.")
+                break   
+            
+            
             id, username, password = user
             login_data = {'login': username, 'password': password}
             response = requests.post('https://login.emaktab.uz/', data=login_data)
@@ -154,9 +173,14 @@ async def handle_login_student(message: types.Message):
 @dp.message(F.text == "Royhatdan o'tish ota-ona ➕")  # Foydalanuvchi "parent_login" deb yozganida
 async def handle_login_parent(message: types.Message):
     global login_counter_parent
+    global stop_flag
     users = get_all_users_from_db('users2')
     if users:
         for user in users:
+            if stop_flag:
+                await message.answer("Login jarayoni to'xtatildi.")
+                break
+            
             id, username, password = user
             login_data = {'login': username, 'password': password}
             response = requests.post('https://login.emaktab.uz/', data=login_data)
