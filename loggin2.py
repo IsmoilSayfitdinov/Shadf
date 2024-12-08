@@ -308,7 +308,7 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
             cursor.execute(insert_query, (username, password))  # Ma'lumotlarni qo'shish
             connection.commit()  # O'zgarishlarni saqlash
             
-            print(f"{username} muvaffaqiyatli qo'shildi.")
+            await message.answer(f"{username} muvaffaqiyatli qo'shildi.")
             cursor.close()
             connection.close()  # Cursor va connectionni yopish
         
