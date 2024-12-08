@@ -9,8 +9,6 @@ import requests
 import asyncio
 import random
 import os
-
-
 API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
 
 DB_PARAMS = {
@@ -40,6 +38,7 @@ keyboardStart = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+
 keyboardStart2 = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Royhatdan o'tish o'quvchilar ⏩")],
@@ -63,6 +62,8 @@ class UserState(StatesGroup):
     updating_student = State()
     updating_parent = State()
     uploading_excel = State()
+    login_state = State()  # Login holati
+    password_state = State()  #state
     searching_user = State()
 
 def get_db_connection():
@@ -98,8 +99,22 @@ def create_db():
             password TEXT NOT NULL
         )
     '''
+    
+    adminusers = '''
+        CREATE TABLE IF NOT EXISTS adminusers (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL
+        )
+    '''
+    
+    query = "INSERT INTO adminusers (username, password) VALUES (%s, %s)"
+    
+    
     execute_query(create_users_table)
     execute_query(create_users2_table)
+    execute_query(adminusers)
+    execute_query(query, ('admin', 'admin'))
 
 def add_user_to_db(username, password, table='users'):
     query = f"INSERT INTO {table} (username, password) VALUES (%s, %s)"
@@ -369,11 +384,49 @@ async def search_user(message: types.Message, state: FSMContext):
             
 @dp.message(F.text == "Chiqish 🚪")
 async def handle_exit(message: types.Message):
-    await message.answer("Boshlash uchun pastdagi tugmalrni birini bosing !!", reply_markup=keyboardStart)
+    await message.answer("Boshlash uchun pastdagi tugmalrni birini bosing !! ", reply_markup=keyboardStart)
+
+
+
+
 
 @dp.message(Command("start"))
-async def send_welcome(message: types.Message):
-    await message.answer("Royhatdan o'tishni boshlash uchun pastdagi tugmani bosing.", reply_markup=keyboardStart)
+async def send_welcome(message: types.Message, state: FSMContext):
+    await message.answer("Boshlash uchun login qiling  !!", reply_markup=keyboardStart)
+    await message.answer("Iltimos, username kiriting.")
+    await state.set_state(UserState.login_state)
+
+
+# Foydalanuvchi username kiritsin
+@dp.message(StateFilter(UserState.login_state))
+async def handle_username(message: types.Message, state: FSMContext):
+    username = message.text.strip()
+
+    # Username tekshirish (bazadagi ma'lumotni olish)
+    user = fetch_query("SELECT * FROM adminusers WHERE username = %s", (username,))
+
+    if user:
+        await message.answer(f"Parolni kiriting.")
+        await state.set_state(UserState.password_state)
+    else:
+        await message.answer("Username xato. Iltimos, qayta urinib ko'ring.")
+
+# Foydalanuvchi parol kiritsin
+@dp.message(StateFilter(UserState.password_state))
+async def handle_password(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+
+    # Parol tekshirish
+    user = fetch_query("SELECT * FROM adminusers WHERE password = %s", (password,))
+
+    if user:
+        await message.answer(f"Xush kelibsiz, {message.from_user.username}!")
+    else:
+        await message.answer("Parol xato. Iltimos, qayta urinib ko'ring.")
+    
+    await state.clear()
+    
+    
 
 @dp.message(F.text == "Royhatdan o'tish boshlash ⏩")
 async def send_welcome2(message: types.Message):
