@@ -9,13 +9,13 @@ import requests
 import asyncio
 import random
 import os
-API_TOKEN = '7939396004:AAGzmCZ10PmzFFGejdDvgk-VLHvvQhqYeIU'
+API_TOKEN = '7763643244:AAEb6GcqNzaolKEvore0KIzB3kRyInX665U'
 
 DB_PARAMS = {
-    'dbname': 'loginemaktab_10',  # o'zgartiring
-    'user': 'loginemaktab',   # o'zgartiring
+    'dbname': 'isa_db_maktab',  # o'zgartiring
+    'user': 'isa_db',   # o'zgartiring
     'password': 'Ismoil1233',   # o'zgartiring
-    'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
+    'host': 'postgresql-isa.alwaysdata.net',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
