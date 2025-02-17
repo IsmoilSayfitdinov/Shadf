@@ -12,10 +12,10 @@ import os
 API_TOKEN = '7655935648:AAEcL9_PlOeSmybOx21V-qvvZTmDASApfSk'
 
 DB_PARAMS = {
-    'dbname': 'loginemaktab_db',  # o'zgartiring
-    'user': 'loginemaktab',   # o'zgartiring
+    'dbname': 'isa_db_maktab',  # o'zgartiring
+    'user': 'isa_db',   # o'zgartiring
     'password': 'Ismoil1233',   # o'zgartiring
-    'host': 'postgresql-loginemaktab.alwaysdata.net',  # server manzili
+    'host': 'postgresql-isa.alwaysdata.net',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
