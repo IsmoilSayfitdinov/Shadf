@@ -9,7 +9,7 @@ import requests
 import asyncio
 import random
 import os
-API_TOKEN = '8155156574:AAGy4PpaXLrFyYsDMzDwAWIs286EhuZbfqs'
+API_TOKEN = '7655935648:AAEcL9_PlOeSmybOx21V-qvvZTmDASApfSk'
 
 DB_PARAMS = {
     'dbname': 'loginemaktab_db',  # o'zgartiring
