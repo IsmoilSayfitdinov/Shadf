@@ -137,13 +137,13 @@ WAIT_TIME_SECONDS_PARENT = 100
 
 stop_flag = False
 
-@dp.message(F.text == "Start 🚀")
+@dp.message(F.text == "Start🚀")
 async def startLogin(message: types.Message):
     global stop_flag
     stop_flag = False
     await message.answer("Login jarayoni boshlandi.", reply_markup=keyboardStart2)
     
-@dp.message(F.text == "Stop 🚫")
+@dp.message(F.text == "Stop🚫")
 async def stopLogin(message: types.Message):
     global stop_flag
     stop_flag = True
