@@ -9,13 +9,13 @@ import requests
 import asyncio
 import random
 import os
-API_TOKEN = '7655935648:AAEcL9_PlOeSmybOx21V-qvvZTmDASApfSk'
+API_TOKEN = '7626478056:AAFpRIB-mNtexSPhmUouWhDJfc8MykeMywU'
 
 DB_PARAMS = {
-    'dbname': 'isa_db_maktab',  # o'zgartiring
-    'user': 'isa_db',   # o'zgartiring
+    'dbname': 'ismoilsayfit_10a',  # o'zgartiring
+    'user': 'ismoilsayfit_user_db',   # o'zgartiring
     'password': 'Ismoil1233',   # o'zgartiring
-    'host': 'postgresql-isa.alwaysdata.net',  # server manzili
+    'host': 'postgresql-ismoilsayfit.alwaysdata.net',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
@@ -276,11 +276,11 @@ async def process_excel_upload(message: types.Message, state: FSMContext):
         file_id = message.document.file_id
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        file_name = f"/home/isa/Shadf/{message.document.file_name}" 
-        await bot.download_file(file_path, f"/home/isa/Shadf/{message.document.file_name}")
+        file_name = f"/home/ismoilsayfit/Shadf/{message.document.file_name}" 
+        await bot.download_file(file_path, f"/home/ismoilsayfit/Shadf/{message.document.file_name}")
 
         # Excel faylini o'qish
-        df = pd.read_excel(f"/home/isa/Shadf/{message.document.file_name}")
+        df = pd.read_excel(f"/home/ismoilsayfit/Shadf/{message.document.file_name}")
 
         # NaN qiymatlarini olib tashlash
         df = df.dropna(axis=1, how='all')  # Agar ustunda faqat NaN bo'lsa, ustunni o'chirish
