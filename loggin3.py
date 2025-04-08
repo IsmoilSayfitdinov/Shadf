@@ -12,10 +12,10 @@ import os
 API_TOKEN = '7763643244:AAEb6GcqNzaolKEvore0KIzB3kRyInX665U'
 
 DB_PARAMS = {
-    'dbname': 'ismoilsayfit_db',  # o'zgartiring
-    'user': 'ismoilsayfit_user_db',   # o'zgartiring
+    'dbname': '320maktab_db',  # o'zgartiring
+    'user': '320maktab',   # o'zgartiring
     'password': 'Ismoil1233',   # o'zgartiring
-    'host': 'postgresql-ismoilsayfit.alwaysdata.net',  # server manzili
+    'host': ' postgresql-320maktab.alwaysdata.net',  # server manzili
     'port': '5432'        # PostgreSQL porti
 }
 
